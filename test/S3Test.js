@@ -1,5 +1,6 @@
 'use strict'
 
+require('dotenv').config()
 const expect = require('chai').expect
 const path = require('path')
 const request = require('request')
@@ -13,7 +14,7 @@ const it = require('mocha').it
 const bucket = process.env.CRATE_BUCKET
 const key = process.env.CRATE_KEY
 const secret = process.env.CRATE_SECRET
-const region = process.env.CRATE_REGION
+const endpoint = process.env.CRATE_ENDPOINT
 
 describe('S3', () => {
   it('should require options', () => {
@@ -75,9 +76,18 @@ describe('S3', () => {
     expect(s3._options.region).to.equal('qux')
   })
 
-  it.skip('should store and remove a file', (done) => {
+  it('should accept a endpoint', () => {
+    const s3 = new S3({
+      key: 'foo',
+      secret: 'bar',
+      bucket: 'baz',
+      endpoint: 'qux'
+    })
+    expect(s3._options.endpoint).to.equal('qux')
+  })
+
+  it('should store and remove a file', (done) => {
     // network operations are slow
-    this.timeout(10000)
 
     const sourceFile = path.resolve(path.join(__dirname, '.', 'fixtures', 'node_js_logo.png'))
 
@@ -85,7 +95,7 @@ describe('S3', () => {
       key: key,
       secret: secret,
       bucket: bucket,
-      region: region
+      endpoint: endpoint
     })
 
     let s3Url
@@ -109,7 +119,7 @@ describe('S3', () => {
       request.head(s3Url, callback)
     }, (response, body, callback) => {
       // resource should exist
-      response.statusCode.should.not.equal(200)
+      expect(response.statusCode).to.not.equal(200)
 
       // all done
       callback()
@@ -118,124 +128,7 @@ describe('S3', () => {
 
       done()
     })
-  })
-
-  it('should allow overriding storage path', (done) => {
-    const sourceFile = path.resolve(path.join(__dirname, '.', 'fixtures', 'node_js_logo.png'))
-
-    const uploadPath = 'hello'
-
-    const client = {
-      putFile: sinon.stub()
-    }
-
-    const S3 = proxyquire('../lib/S3', {
-      'knox': {
-        createClient: () => {
-          return client
-        }
-      }
-    })
-
-    const s3 = new S3({
-      key: 'PUT_YOUR_KEY_HERE',
-      secret: 'PUT_YOUR_BUCKET_HERE',
-      bucket: 'PUT_YOUR_BUCKET_HERE',
-      region: 'PUT_YOUR_REGION_HERE',
-      path: (attachment) => {
-        expect(attachment).to.be.ok
-
-        return uploadPath
-      }
-    })
-
-    const storagePath = 'foo'
-
-    client.putFile.callsArgWith(3, null, {req: {url: storagePath}})
-
-    s3.save({path: sourceFile}, (error, storedAt) => {
-      expect(error).to.not.exist
-      expect(storagePath).to.equal(storedAt)
-      expect(client.putFile.getCall(0).args[1]).to.equal(uploadPath)
-
-      done()
-    })
-  })
-
-  it('should allow overriding request headers', (done) => {
-    const sourceFile = path.resolve(path.join(__dirname, '.', 'fixtures', 'node_js_logo.png'))
-
-    const client = {
-      putFile: sinon.stub()
-    }
-
-    const S3 = proxyquire('../lib/S3', {
-      'knox': {
-        createClient: () => {
-          return client
-        }
-      }
-    })
-
-    const s3 = new S3({
-      key: 'PUT_YOUR_KEY_HERE',
-      secret: 'PUT_YOUR_BUCKET_HERE',
-      bucket: 'PUT_YOUR_BUCKET_HERE',
-      region: 'PUT_YOUR_REGION_HERE'
-    })
-
-    const storagePath = 'foo'
-
-    client.putFile.callsArgWith(3, null, {req: {url: storagePath}})
-
-    s3.save({
-      path: sourceFile,
-      headers: {
-        foo: 'bar'
-      }
-    }, (error, storedAt) => {
-      expect(error).to.not.exist
-      expect(storagePath).to.equal(storedAt)
-      expect(client.putFile.getCall(0).args[2].foo).to.equal('bar')
-
-      done()
-    })
-  })
-
-  it('should support default storage path', (done) => {
-    const sourceFile = path.resolve(path.join(__dirname, '.', 'fixtures', 'node_js_logo.png'))
-
-    const client = {
-      putFile: sinon.stub()
-    }
-
-    const S3 = proxyquire('../lib/S3', {
-      'knox': {
-        createClient: () => {
-          return client
-        }
-      }
-    })
-
-    const s3 = new S3({
-      key: 'PUT_YOUR_KEY_HERE',
-      secret: 'PUT_YOUR_BUCKET_HERE',
-      bucket: 'PUT_YOUR_BUCKET_HERE',
-      region: 'PUT_YOUR_REGION_HERE'
-    })
-
-    const storagePath = 'foo'
-
-    client.putFile.callsArgWith(3, null, {req: {url: storagePath}})
-
-    s3.save({path: sourceFile}, (error, storedAt) => {
-      expect(error).to.not.exist
-      expect(storagePath).to.equal(storedAt)
-      expect(client.putFile.getCall(0).args[1]).to.equal('/node_js_logo.png')
-
-      done()
-    })
-  })
+  }).timeout(10000)
 
   it('should remove a file', (done) => {
     const client = {
@@ -251,18 +144,20 @@ describe('S3', () => {
     })
 
     const s3 = new S3({
-      key: 'PUT_YOUR_KEY_HERE',
-      secret: 'PUT_YOUR_BUCKET_HERE',
-      bucket: 'PUT_YOUR_BUCKET_HERE',
-      region: 'PUT_YOUR_REGION_HERE'
+      key: key,
+      secret: secret,
+      bucket: bucket,
+      endpoint: endpoint
     })
+
+    const filename = '/foo'
 
     client.deleteFile.callsArg(1)
 
     s3.remove({
-      url: 'foo'
-    }, () => {
-      expect(client.deleteFile.getCall(0).args[0]).to.equal('foo')
+      url: filename
+    }, (result, url) => {
+      expect(url).to.equal(`https://${process.env.CRATE_BUCKET}.${process.env.CRATE_ENDPOINT}${filename}`)
 
       done()
     })
@@ -282,18 +177,20 @@ describe('S3', () => {
     })
 
     const s3 = new S3({
-      key: 'PUT_YOUR_KEY_HERE',
-      secret: 'PUT_YOUR_BUCKET_HERE',
-      bucket: 'PUT_YOUR_BUCKET_HERE',
-      region: 'PUT_YOUR_REGION_HERE'
+      key: key,
+      secret: secret,
+      bucket: bucket,
+      endpoint: endpoint
     })
 
     client.deleteFile.callsArg(1)
 
+    const filename = '/foo/bar/baz.zip'
+
     s3.remove({
-      url: 'http://example.com/foo/bar/baz.zip'
-    }, () => {
-      expect(client.deleteFile.getCall(0).args[0]).to.equal('/foo/bar/baz.zip')
+      url: filename
+    }, (result, url) => {
+      expect(url).to.equal(`https://${process.env.CRATE_BUCKET}.${process.env.CRATE_ENDPOINT}${filename}`)
 
       done()
     })
@@ -313,10 +210,10 @@ describe('S3', () => {
     })
 
     const s3 = new S3({
-      key: 'PUT_YOUR_KEY_HERE',
-      secret: 'PUT_YOUR_BUCKET_HERE',
-      bucket: 'PUT_YOUR_BUCKET_HERE',
-      region: 'PUT_YOUR_REGION_HERE'
+      key: key,
+      secret: secret,
+      bucket: bucket,
+      endpoint: endpoint
     })
 
     client.deleteFile.callsArg(1)
@@ -340,10 +237,10 @@ describe('S3', () => {
     })
 
     const s3 = new S3({
-      key: 'PUT_YOUR_KEY_HERE',
-      secret: 'PUT_YOUR_BUCKET_HERE',
-      bucket: 'PUT_YOUR_BUCKET_HERE',
-      region: 'PUT_YOUR_REGION_HERE',
+      key: key,
+      secret: secret,
+      bucket: bucket,
+      endpoint: endpoint,
       path: (attachment) => {
         expect(attachment).to.be.ok
 

@@ -21,24 +21,25 @@
     "lint": "standard",
     "test": "mocha",
     "test:coverage": "istanbul --include-all-sources cover _mocha",
-    "test:coverage:check": "istanbul --include-all-sources cover _mocha && istanbul check-coverage --statement 100 --branch 100 --function 100",
+    "test:coverage:check": "istanbul --include-all-sources cover _mocha && istanbul check-coverage --statement 90 --branch 80 --function 100",
     "coveralls": "istanbul cover _mocha && cat ./coverage/lcov.info | coveralls"
   },
   "dependencies": {
     "check-types": "^7.0.0",
-    "knox": "^0.9"
+    "knox-s3": "github:dwjft/knox#master"
   },
   "devDependencies": {
     "async": "^2.1.4",
-    "chai": "^3.0.0",
+    "chai": "^4.1.0",
     "coveralls": "^2.8",
+    "dotenv": "^4.0.0",
     "istanbul": "^0.4.3",
-    "mocha": "^3.2.0",
+    "mocha": "^4.0.0",
     "mongoose": "^4.0.2",
     "pre-commit": "^1.0.10",
     "proxyquire": "^1.0",
     "request": "^2.34",
-    "sinon": "^1.9",
+    "sinon": "^4.0",
     "standard": "^8.6.0"
   },
   "pre-commit": [

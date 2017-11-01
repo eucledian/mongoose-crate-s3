@@ -5,3 +5,9 @@ coverage
 Thumbs.db
 node_modules
 *.log
+
+tags
+tags.*
+
+.env
+.tern-port
